@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>柏佑 2026-11-10 — Jump Telemetry</title>
+<title>柏佑 2026-11-10 — 跳躍力學分析報告</title>
 <style>
   :root {
     --bg: #0b0f17;
@@ -18,8 +18,8 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", "Noto Sans TC", sans-serif;
-    line-height: 1.4;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    line-height: 1.45;
     padding: 16px 12px 48px;
   }
   .container {
@@ -40,7 +40,7 @@
   .title-block h1 {
     font-size: 1.25rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
   }
   .title-block span {
     font-size: 0.8rem;
@@ -101,7 +101,7 @@
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
   .scrubber-row input[type=range] {
     flex: 1;
@@ -160,10 +160,11 @@
     font-variant-numeric: tabular-nums;
   }
   th, td {
-    padding: 12px 14px;
+    padding: 11px 13px;
     text-align: right;
     border-bottom: 1px solid var(--panel-border);
     font-size: 0.9rem;
+    vertical-align: middle;
   }
   th:first-child, td:first-child {
     text-align: left;
@@ -171,12 +172,18 @@
     font-weight: 500;
   }
   thead th {
-    font-size: 0.76rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--muted);
+    font-size: 0.8rem;
+    color: var(--text);
     background: rgba(11, 15, 23, 0.45);
     font-weight: 600;
+  }
+  .th-sub {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--dim);
+    font-weight: 400;
+    margin-top: 2px;
+    white-space: nowrap;
   }
   tbody tr:last-child td { border-bottom: none; }
   .val-main {
@@ -209,19 +216,29 @@
   .chart-header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: flex-start;
+    gap: 8px;
     margin-bottom: 8px;
   }
+  .chart-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
   .chart-title {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: var(--text);
-    letter-spacing: 0.01em;
+  }
+  .chart-note {
+    font-size: 0.73rem;
+    color: var(--dim);
   }
   .chart-unit {
     font-size: 0.75rem;
-    color: var(--dim);
+    color: var(--muted);
     font-family: "SF Mono", monospace;
+    white-space: nowrap;
   }
   canvas.telemetry-canvas {
     width: 100%;
@@ -252,17 +269,17 @@
     </div>
     <div class="controls-bar">
       <div class="scrubber-row">
-        <button id="btn-play" class="active" style="min-width:60px;justify-content:center;">Play</button>
-        <button id="btn-prev" title="Prev Frame">◀</button>
-        <button id="btn-zero" title="Jump to Takeoff (t=0)">t = 0</button>
-        <button id="btn-next" title="Next Frame">▶</button>
+        <button id="btn-play" class="active" style="min-width:60px;justify-content:center;">播放</button>
+        <button id="btn-prev" title="上一幀">◀</button>
+        <button id="btn-zero" title="跳至起跳瞬間 (t=0)">起跳點</button>
+        <button id="btn-next" title="下一幀">▶</button>
         <input type="range" id="time-slider" min="0" max="1000" value="0">
         <span class="time-readout" id="time-readout">t = 0.00s</span>
       </div>
 
       <div class="btn-group" id="view-switch">
-        <button data-mode="raw" class="active">Original</button>
-        <button data-mode="skel">Skeleton</button>
+        <button data-mode="raw" class="active">原始畫面</button>
+        <button data-mode="skel">3D 骨架</button>
       </div>
 
       <div class="btn-group" id="speed-switch">
@@ -271,7 +288,7 @@
         <button data-rate="0.25">0.25x</button>
       </div>
 
-      <a id="dl-link" class="dl-btn" download>Download MP4</a>
+      <a id="dl-link" class="dl-btn" download>下載並排影片</a>
     </div>
   </div>
 
@@ -280,14 +297,14 @@
     <table id="metrics-table">
       <thead>
         <tr>
-          <th>Jump</th>
-          <th>Height</th>
-          <th>Airtime</th>
-          <th>Rotation</th>
-          <th>Peak Speed</th>
-          <th>Avg Speed</th>
-          <th>Min Tuck</th>
-          <th>Axis Tilt</th>
+          <th>跳躍<span class="th-sub">起跳時間對齊 (t=0)</span></th>
+          <th>跳躍高度<span class="th-sub">由滯空時間推算</span></th>
+          <th>滯空時間<span class="th-sub">離地至落地秒數</span></th>
+          <th>空中旋轉<span class="th-sub">滯空累積度數 (圈數)</span></th>
+          <th>峰值轉速<span class="th-sub">空中最快瞬時轉速</span></th>
+          <th>平均轉速<span class="th-sub">滯空期間平均轉速</span></th>
+          <th>最小收緊半徑<span class="th-sub">四肢距軸心最近距離</span></th>
+          <th>平均軸線傾角<span class="th-sub">身體中軸偏移垂直角度</span></th>
         </tr>
       </thead>
       <tbody id="metrics-tbody"></tbody>
@@ -298,16 +315,22 @@
   <div class="charts-grid">
     <div class="card chart-card">
       <div class="chart-header">
-        <span class="chart-title">Rotation Speed</span>
-        <span class="chart-unit">deg/s</span>
+        <div class="chart-title-wrap">
+          <span class="chart-title">瞬時轉速變化</span>
+          <span class="chart-note">t = 0.0s 為起跳瞬間，藍色底區間為滯空期；曲線越陡代表起跳後加速越快（可拖曳圖表同步檢視影片）</span>
+        </div>
+        <span class="chart-unit">deg/s (度/秒)</span>
       </div>
       <canvas id="chart-omega" class="telemetry-canvas"></canvas>
     </div>
 
     <div class="card chart-card">
       <div class="chart-header">
-        <span class="chart-title">Limb Tuck Radius</span>
-        <span class="chart-unit">cm</span>
+        <div class="chart-title-wrap">
+          <span class="chart-title">四肢收緊半徑</span>
+          <span class="chart-note">手肘、手腕、膝、踝至身體旋轉軸心的平均距離；空中收得越緊（數值越低），旋轉速度越快</span>
+        </div>
+        <span class="chart-unit">cm (公分)</span>
       </div>
       <canvas id="chart-tuck" class="telemetry-canvas compact"></canvas>
     </div>
@@ -315,16 +338,22 @@
     <div class="charts-grid-bottom">
       <div class="card chart-card">
         <div class="chart-header">
-          <span class="chart-title">Body Axis Tilt</span>
-          <span class="chart-unit">deg</span>
+          <div class="chart-title-wrap">
+            <span class="chart-title">空中身體軸線傾角</span>
+            <span class="chart-note">骨盆至頸部中軸與垂直線夾角；越接近 0° 代表空中軸心越正</span>
+          </div>
+          <span class="chart-unit">deg (度)</span>
         </div>
         <canvas id="chart-tilt" class="telemetry-canvas compact"></canvas>
       </div>
 
       <div class="card chart-card">
         <div class="chart-header">
-          <span class="chart-title">Shoulder–Hip Twist</span>
-          <span class="chart-unit">deg</span>
+          <div class="chart-title-wrap">
+            <span class="chart-title">肩髖扭轉差</span>
+            <span class="chart-note">肩膀與骨盆朝向角度差；起跳前拉開蓄力，空中趨近 0° 代表核心鎖緊同步旋轉</span>
+          </div>
+          <span class="chart-unit">deg (度)</span>
         </div>
         <canvas id="chart-xfactor" class="telemetry-canvas compact"></canvas>
       </div>
@@ -353,7 +382,7 @@ DATA.jumps.forEach(j => {
     <td><span style="display:inline-flex;align-items:center;gap:8px;font-weight:700;color:${j.color}"><span class="dot" style="background:${j.color}"></span>${j.label}</span></td>
     <td><span class="val-main">${s.height_cm.toFixed(1)}</span><span class="val-unit">cm</span></td>
     <td><span class="val-main">${s.airtime_s.toFixed(2)}</span><span class="val-unit">s</span></td>
-    <td><span class="val-main">${Math.round(s.air_rotation_deg)}°</span><span class="val-unit">(${s.air_revolutions.toFixed(2)}r)</span></td>
+    <td><span class="val-main">${Math.round(s.air_rotation_deg)}°</span><span class="val-unit">(${s.air_revolutions.toFixed(2)}圈)</span></td>
     <td><span class="val-main">${Math.round(s.peak_omega_deg_s)}</span><span class="val-unit">deg/s</span></td>
     <td><span class="val-main">${Math.round(s.avg_omega_deg_s)}</span><span class="val-unit">deg/s</span></td>
     <td><span class="val-main">${s.min_air_tuck_cm.toFixed(1)}</span><span class="val-unit">cm</span></td>
@@ -406,8 +435,8 @@ btnPlay.addEventListener('click', () => {
   }
 });
 
-video.addEventListener('play', () => { btnPlay.textContent = 'Pause'; });
-video.addEventListener('pause', () => { btnPlay.textContent = 'Play'; });
+video.addEventListener('play', () => { btnPlay.textContent = '暫停'; });
+video.addEventListener('pause', () => { btnPlay.textContent = '播放'; });
 
 btnPrev.addEventListener('click', () => {
   video.pause();
@@ -466,8 +495,8 @@ const CHARTS = [
 ];
 
 const maxAirtime = Math.max(...DATA.jumps.map(j => j.summary.airtime_s));
-const plotTMin = Math.max(tStart, -0.65);
-const plotTMax = Math.min(tEnd, maxAirtime + 0.55);
+const plotTMin = Math.max(tStart, -0.55);
+const plotTMax = Math.min(tEnd, maxAirtime + 0.50);
 
 function drawAllCharts() {
   const curT = getRelTime();
@@ -491,7 +520,6 @@ function drawAllCharts() {
     const pw = W - padL - padR;
     const ph = H - padT - padB;
 
-    // Gather min/max Y within [plotTMin, plotTMax]
     let yMin = Infinity, yMax = -Infinity;
     DATA.jumps.forEach(j => {
       const ts = j.series.rel_time_s;
@@ -560,7 +588,7 @@ function drawAllCharts() {
     const stepT = 0.2;
     for (let tTick = Math.ceil(plotTMin / stepT) * stepT; tTick <= plotTMax + 1e-4; tTick += stepT) {
       const xx = xOf(tTick);
-      const lbl = Math.abs(tTick) < 1e-3 ? '0.0s' : (tTick > 0 ? `+${tTick.toFixed(1)}s` : `${tTick.toFixed(1)}s`);
+      const lbl = Math.abs(tTick) < 1e-3 ? '0.0s (起跳)' : (tTick > 0 ? `+${tTick.toFixed(1)}s` : `${tTick.toFixed(1)}s`);
       ctx.fillText(lbl, xx, H - 6);
     }
 
@@ -570,7 +598,6 @@ function drawAllCharts() {
       const ys = j.series[cfg.key];
       const airEnd = j.summary.airtime_s;
 
-      // Subtle dashed line outside airborne, solid bright line inside [0, airEnd]
       ctx.strokeStyle = j.color;
       ctx.lineWidth = 2.2;
       ctx.beginPath();
